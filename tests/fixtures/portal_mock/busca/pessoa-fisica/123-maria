@@ -1,0 +1,17 @@
+<html><body><main>
+<h1>Pessoa Física - Panorama da relação da pessoa com o Governo Federal</h1>
+<section class="dados-tabelados">
+  <div><strong>Nome</strong><span>MARIA DA SILVA</span></div>
+  <div><strong>CPF</strong><span>***.982.247-**</span></div>
+  <div><strong>Localidade</strong><span>RIO DE JANEIRO - RJ</span></div>
+</section>
+<button aria-expanded="false" onclick="this.setAttribute('aria-expanded','true');document.querySelector('#rec').style.display='block'">Recebimentos de recursos</button>
+<div id="rec" style="display:none">
+  <div id="box-ab"><strong>Auxílio Brasil</strong>
+    <table><thead><tr><th>NIS</th><th>Valor Recebido</th><th>Detalhar</th></tr></thead>
+    <tbody><tr><td>12056412545</td><td>R$ 4.800,00</td><td><a href="/beneficios/auxilio-brasil?id=1">Detalhar</a></td></tr></tbody></table></div>
+  <div id="box-bf"><strong>Bolsa Família</strong>
+    <table><thead><tr><th>NIS</th><th>Valor Recebido</th><th>Detalhar</th></tr></thead>
+    <tbody><tr><td>12056412545</td><td>R$ 1.200,00</td><td><a href="/beneficios/bolsa-familia?id=2">Detalhar</a></td></tr></tbody></table></div>
+</div>
+</main></body></html>

@@ -1,0 +1,8 @@
+<html><body><main>
+<section class="dados-tabelados"><div><strong>Programa</strong><span>Auxílio Brasil</span></div></section>
+<select name="lista_length"><option value="10">10</option><option value="50">50</option></select>
+<table><thead><tr><th>Mês de Referência</th><th>UF</th><th>Município</th><th>Valor</th></tr></thead>
+<tbody id="tb"><tr><td>Carregando...</td></tr></tbody></table>
+<script>setTimeout(()=>{document.querySelector('#tb').innerHTML=
+ '<tr><td>01/2022</td><td>RJ</td><td>RIO DE JANEIRO</td><td>R$ 400,00</td></tr><tr><td>02/2022</td><td>RJ</td><td>RIO DE JANEIRO</td><td>R$ 400,00</td></tr>'},400)</script>
+</main></body></html>

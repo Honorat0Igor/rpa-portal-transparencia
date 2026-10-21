@@ -1,0 +1,10 @@
+services:
+  robo:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file: .env
+    volumes:
+      - ./output:/app/output
+    shm_size: "1gb"   # evita crash do Chromium por /dev/shm pequeno
+    restart: unless-stopped

@@ -1,0 +1,16 @@
+<html><body><main>
+<button id="accept-all-btn" onclick="this.remove()">Aceitar</button>
+<span id="countResultados"></span><div id="resultados"></div>
+<script>
+const p = new URLSearchParams(location.search), termo = p.get('termo') || '';
+if (termo !== '00000000000') {             // CPF que "não responde" -> timeout
+  setTimeout(() => {
+    if (/XYZ/.test(termo)) { document.querySelector('#countResultados').innerText = '0'; return; }
+    document.querySelector('#countResultados').innerText = '2';
+    const social = p.get('beneficiarioProgramaSocial') === 'true' ? 'social' : 'geral';
+    document.querySelector('#resultados').innerHTML =
+      `<a class="link-busca-nome" href="/busca/pessoa-fisica/123-maria?f=${social}">MARIA DA SILVA</a>
+       <a class="link-busca-nome" href="/busca/pessoa-fisica/999-outra">OUTRA</a>`;
+  }, 300);
+}
+</script></main></body></html>
