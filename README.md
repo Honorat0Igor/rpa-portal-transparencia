@@ -6,6 +6,10 @@ Robô em Python + Playwright que consulta **Pessoa Física** no
 (Auxílio Brasil, Auxílio Emergencial, Bolsa Família, etc.), captura evidência
 em Base64 e devolve tudo em JSON — exposto como **API REST com Swagger**.
 
+> Solução para o [desafio técnico público de RPA da mostQI](https://github.com/mostqi/desafios-fullstack-python/blob/main/desafio-01/README.md), feita como projeto de estudo.
+>
+> **Status:** Parte 1 (robô + API) ✅ concluída · Parte 2 (workflow com Google Drive/Sheets) 🚧 em andamento
+
 ## Funcionalidades
 
 - Busca por **Nome, CPF ou NIS** (detecção automática com validação de dígitos)
@@ -41,6 +45,14 @@ scripts/demo_concorrencia.py # Dispara N consultas simultâneas (demonstração)
 tests/                       # Unitários, API e E2E (portal simulado em tests/fixtures)
 docs/PARTE2_ACTIVEPIECES.md  # Workflow de hiperautomação (Drive + Sheets)
 ```
+
+## Decisões técnicas
+
+Resumo das principais escolhas — detalhes, desafios enfrentados e melhorias futuras no [Relatório](RELATORIO.md).
+
+- **Playwright (async) em vez de Selenium:** espera automática por elementos e API assíncrona nativa, essencial para execuções simultâneas num único processo.
+- **Um navegador, vários contextos:** um único Chromium compartilhado e um `BrowserContext` isolado por consulta, com semáforo limitando o paralelismo.
+- **Busca pela URL da consulta:** os parâmetros vão direto na URL, eliminando cliques e digitação frágeis no formulário.
 
 ## Como executar
 
@@ -179,4 +191,11 @@ de extração são genéricos (pares rótulo/valor e tabelas), o que reduz quebr
 
 ## Parte 2 — Hiperautomação
 
-Ver [docs/PARTE2_ACTIVEPIECES.md](docs/PARTE2_ACTIVEPIECES.md).
+🚧 **Em desenvolvimento.** O documento abaixo descreve o plano de implementação com Activepieces:
+[docs/PARTE2_ACTIVEPIECES.md](docs/PARTE2_ACTIVEPIECES.md).
+
+## Autor
+
+**Igor Honorato** — [LinkedIn](https://www.linkedin.com/in/igor-honorato-martins/)
+
+Desenvolvido com apoio do Claude Code (assistente de IA) na escrita e revisão do código; as decisões técnicas e os desafios estão documentados no [Relatório](RELATORIO.md).
