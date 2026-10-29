@@ -1,0 +1,18 @@
+# Arquivos enviados ao Cloud Build no `gcloud run deploy --source .`
+# Segredos ficam no Secret Manager; NUNCA envie o .env.
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+output/
+logs/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.vscode/
+.claude/
+tests/
+docs/
+scripts/
