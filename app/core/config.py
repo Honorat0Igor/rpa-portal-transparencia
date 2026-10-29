@@ -19,10 +19,15 @@ class Settings(BaseSettings):
     # Navegador
     headless: bool = True
     chromium_executable_path: str | None = None  # opcional: Chrome/Chromium já instalado
-    max_concurrent_bots: int = 3
+    max_concurrent_bots: int = 2
+    bot_start_interval_s: float = 3  # intervalo mínimo entre o início de dois robôs (evita CAPTCHA)
     navigation_timeout_ms: int = 30_000
     search_timeout_ms: int = 20_000
-    total_timeout_s: float = 120
+    total_timeout_s: float = 120  # inclui as novas tentativas após bloqueio
+
+    # Novas tentativas quando o portal exibe CAPTCHA (espera cresce 3x: 10s, 30s, ...)
+    antibot_max_retries: int = 2
+    antibot_retry_wait_s: float = 10
 
     # API
     api_key: str | None = None  # se definida, exige header X-API-Key

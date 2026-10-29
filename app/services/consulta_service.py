@@ -9,7 +9,8 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from app.bot.browser import BrowserManager
-from app.bot.exceptions import BotError, NenhumResultadoError, PortalIndisponivelError, TempoEsgotadoError
+from app.bot.exceptions import (BloqueioAntiBotError, BotError, NenhumResultadoError, PortalIndisponivelError,
+                                TempoEsgotadoError)
 from app.bot.portal_api import PortalApiClient
 from app.bot.portal_scraper import PortalTransparenciaScraper
 from app.core.config import Settings
@@ -64,10 +65,8 @@ class ConsultaService:
                 dados, evidencia = await asyncio.wait_for(
                     self._api.consultar(termo, tipo, filtro), timeout=self._settings.total_timeout_s)
             else:
-                async with self._browser.contexto() as ctx:
-                    scraper = self._scraper_cls(ctx, self._settings)
-                    dados, evidencia = await asyncio.wait_for(
-                        scraper.consultar(termo, filtro), timeout=self._settings.total_timeout_s)
+                dados, evidencia = await asyncio.wait_for(
+                    self._consultar_navegador(id_consulta, termo, filtro), timeout=self._settings.total_timeout_s)
         except Exception as exc:  # noqa: BLE001 - toda falha vira resposta JSON
             codigo, mensagem = mensagem_de_erro(exc, tipo, termo)
             if isinstance(exc, BotError):
@@ -91,6 +90,30 @@ class ConsultaService:
         logger.info("[%s] Finalizada: %s em %.2fs", id_consulta, resposta.status, resposta.tempo_execucao_segundos)
         self._salvar(resposta)
         return resposta
+
+    async def _consultar_navegador(self, id_consulta: str, termo: str, filtro: bool):
+        """Executa o robô; se o portal exibir CAPTCHA, espera e tenta de novo num contexto novo."""
+        cfg = self._settings
+        relogio = asyncio.get_running_loop()
+        limite = relogio.time() + cfg.total_timeout_s
+        espera = cfg.antibot_retry_wait_s
+        for tentativa in range(1, cfg.antibot_max_retries + 2):
+            inicio_tentativa = relogio.time()
+            try:
+                async with self._browser.contexto() as ctx:
+                    return await self._scraper_cls(ctx, cfg).consultar(termo, filtro)
+            except BloqueioAntiBotError:
+                # Só tenta de novo se a espera + outra tentativa do mesmo tamanho couberem no timeout total;
+                # senão desiste já, informando o bloqueio (e não um "tempo esgotado" enganoso)
+                duracao = relogio.time() - inicio_tentativa
+                restante = limite - relogio.time()
+                if tentativa > cfg.antibot_max_retries or restante <= espera + duracao:
+                    raise
+                logger.warning("[%s] CAPTCHA na tentativa %d; nova tentativa em %.0fs",
+                               id_consulta, tentativa, espera)
+            # Fora do contexto: a vaga do semáforo fica livre durante a espera
+            await asyncio.sleep(espera)
+            espera *= 3
 
     def _salvar(self, resposta: ConsultaResponse) -> None:
         if not self._settings.save_output_files:

@@ -87,17 +87,53 @@ Se `{{step_2.body.status}}` = `erro` → Gmail/Slack/Telegram com ID, termo e me
 > Os nomes exatos dos campos de saída (ex.: `step_4.id`) podem variar conforme a
 > versão da peça; confira na aba de dados de teste de cada passo.
 
+## Teste local via túnel (antes do deploy)
+
+Para validar o fluxo sem publicar a API, exponha a máquina local com um
+*quick tunnel* do Cloudflare (não exige conta; a URL muda a cada execução):
+
+```powershell
+winget install --id Cloudflare.cloudflared -e
+uvicorn app.main:app --port 8000                  # terminal 1 (um único worker)
+cloudflared tunnel --url http://127.0.0.1:8000    # terminal 2 → imprime https://<nome>.trycloudflare.com
+```
+
+- `API_KEY` **precisa** estar definida no `.env`: o túnel deixa a API pública.
+- Use a URL impressa no passo 2 do fluxo (`https://<nome>.trycloudflare.com/api/v1/consultas`).
+- O túnel só funciona com o PC ligado e o terminal aberto; para a entrega, faça o deploy abaixo.
+
+### Inicialização automática (Windows)
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\instalar_inicializacao.ps1   # uma vez
+powershell -ExecutionPolicy Bypass -File scripts\iniciar_local.ps1            # sobe agora, sem terminais
+powershell -ExecutionPolicy Bypass -File scripts\parar_local.ps1              # encerra API e túnel
+```
+
+`iniciar_local.ps1` sobe a API e o túnel em segundo plano (logs em `logs/`),
+mostra um aviso com a URL `…/api/v1/consultas` e a copia para a área de
+transferência. Como o *quick tunnel* gera uma URL nova a cada início, cole-a no
+passo 2 do flow e clique em **Publicar**. A URL atual fica em `logs/url_atual.txt`.
+`instalar_inicializacao.ps1` cria um atalho na pasta Inicializar do Windows
+(`-Remover` desfaz).
+
 ## Deploy da API (online para testes)
 
 Recomendado: **Google Cloud Run** (free tier generoso, aceita Dockerfile, memória
 configurável e timeout de requisição longo).
 
-```bash
-gcloud run deploy robo-portal-transparencia --source . --region southamerica-east1 \
-  --memory 2Gi --cpu 2 --timeout 300 --max-instances 2 --concurrency 4 \
-  --set-env-vars MAX_CONCURRENT_BOTS=3 --set-secrets API_KEY=robo-api-key:latest \
-  --allow-unauthenticated
+```powershell
+gcloud auth login
+.\scripts\deploy_cloudrun.ps1 -Projeto <id-do-projeto>
 ```
+
+O script ativa as APIs, grava `API_KEY` e `PORTAL_API_KEY` do `.env` no
+**Secret Manager** e publica com `--memory 2Gi --cpu 2 --timeout 300
+--max-instances 1` (uma instância = um Chromium e uma única fila, já que o
+semáforo vive dentro do processo) e `SAVE_OUTPUT_FILES=false` (o disco do Cloud
+Run é memória; a persistência é o Drive). `.gcloudignore` impede que `.env`,
+`.venv` e `output/` sejam enviados. Ao final, troque a URL do passo 2 do fluxo
+pela URL do serviço e **publique o flow de novo**.
 
 Alternativas: Render (free tier com 512 MB — use `MAX_CONCURRENT_BOTS=1` ou `2`
 e considere o *cold start*) ou Railway.

@@ -1,0 +1,462 @@
+{
+  "name": "Consulta Portal Transparência",
+  "type": "SHARED",
+  "summary": "",
+  "description": "",
+  "tags": [],
+  "blogUrl": "",
+  "metadata": {
+    "externalId": ""
+  },
+  "author": "",
+  "categories": [],
+  "pieces": [
+    "@activepieces/piece-webhook",
+    "@activepieces/piece-http",
+    "@activepieces/piece-google-drive",
+    "@activepieces/piece-google-sheets",
+    "@activepieces/piece-gmail"
+  ],
+  "flows": [
+    {
+      "displayName": "Consulta Portal Transparência",
+      "trigger": {
+        "name": "trigger",
+        "valid": true,
+        "displayName": "Capturar Webhook",
+        "nextAction": {
+          "name": "step_1",
+          "skip": false,
+          "type": "PIECE",
+          "valid": true,
+          "settings": {
+            "input": {
+              "url": "https://SEU-SERVICO/api/v1/consultas",
+              "body": {
+                "data": {
+                  "termo": "{{trigger['output']['body']['termo']}}",
+                  "filtro_beneficiario_programa_social": "{{trigger['output']['body']['filtro_beneficiario_programa_social']}}"
+                }
+              },
+              "method": "POST",
+              "headers": {
+                "X-API-Key": "<SUA_API_KEY>"
+              },
+              "timeout": "300",
+              "authType": "NONE",
+              "body_type": "json",
+              "use_proxy": false,
+              "authFields": {},
+              "failureMode": "continue_none",
+              "queryParams": {},
+              "proxy_settings": {},
+              "followRedirects": false,
+              "response_is_binary": false
+            },
+            "pieceName": "@activepieces/piece-http",
+            "actionName": "send_request",
+            "sampleData": {},
+            "pieceVersion": "0.13.0",
+            "propertySettings": {
+              "url": {
+                "type": "MANUAL"
+              },
+              "body": {
+                "type": "MANUAL",
+                "schema": {
+                  "data": {
+                    "type": "JSON",
+                    "required": true,
+                    "displayName": "JSON Body"
+                  }
+                }
+              },
+              "method": {
+                "type": "MANUAL"
+              },
+              "headers": {
+                "type": "MANUAL"
+              },
+              "timeout": {
+                "type": "MANUAL"
+              },
+              "authType": {
+                "type": "MANUAL"
+              },
+              "body_type": {
+                "type": "MANUAL"
+              },
+              "use_proxy": {
+                "type": "MANUAL"
+              },
+              "authFields": {
+                "type": "MANUAL",
+                "schema": {}
+              },
+              "failureMode": {
+                "type": "MANUAL"
+              },
+              "queryParams": {
+                "type": "MANUAL"
+              },
+              "proxy_settings": {
+                "type": "MANUAL",
+                "schema": {}
+              },
+              "followRedirects": {
+                "type": "MANUAL"
+              },
+              "response_is_binary": {
+                "type": "MANUAL"
+              }
+            },
+            "errorHandlingOptions": {
+              "retryOnFailure": {
+                "value": false
+              },
+              "continueOnFailure": {
+                "value": false
+              }
+            }
+          },
+          "nextAction": {
+            "name": "step_2",
+            "skip": false,
+            "type": "CODE",
+            "valid": true,
+            "settings": {
+              "input": {
+                "resposta": "{{step_1['output']['body']}}"
+              },
+              "useDeno": true,
+              "sampleData": {},
+              "sourceCode": {
+                "code": "export const code = async (inputs) => {\n  const r = inputs.resposta ?? {};\n  const agora = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15).replace('T', '_');\n  return {\n    nome_arquivo: r.nome_arquivo ?? `${r.id_consulta ?? 'sem_id'}_${agora}.json`,\n    conteudo: JSON.stringify(r, null, 2),\n    nome: r.dados?.nome ?? '',\n    cpf: r.dados?.cpf ?? '',\n    mensagem: r.mensagem ?? '',\n  };\n};\n",
+                "packageJson": "{}"
+              },
+              "errorHandlingOptions": {
+                "retryOnFailure": {
+                  "value": false
+                },
+                "continueOnFailure": {
+                  "value": false
+                }
+              }
+            },
+            "nextAction": {
+              "name": "step_3",
+              "skip": false,
+              "type": "PIECE",
+              "valid": true,
+              "settings": {
+                "input": {
+                  "auth": "{{connections['<SUA_CONEXAO>']}}",
+                  "text": "{{step_2['output']['conteudo']}}",
+                  "fileName": "{{step_2['output']['nome_arquivo']}}",
+                  "fileType": "text/plain",
+                  "parentFolder": "<ID_DA_PASTA_NO_DRIVE>",
+                  "include_team_drives": false
+                },
+                "pieceName": "@activepieces/piece-google-drive",
+                "actionName": "create_new_gdrive_file",
+                "sampleData": {},
+                "pieceVersion": "0.13.0",
+                "propertySettings": {
+                  "text": {
+                    "type": "MANUAL"
+                  },
+                  "fileName": {
+                    "type": "MANUAL"
+                  },
+                  "fileType": {
+                    "type": "MANUAL"
+                  },
+                  "parentFolder": {
+                    "type": "MANUAL"
+                  },
+                  "include_team_drives": {
+                    "type": "MANUAL"
+                  }
+                },
+                "errorHandlingOptions": {
+                  "retryOnFailure": {
+                    "value": false
+                  },
+                  "continueOnFailure": {
+                    "value": false
+                  }
+                }
+              },
+              "nextAction": {
+                "name": "step_4",
+                "skip": false,
+                "type": "PIECE",
+                "valid": true,
+                "settings": {
+                  "input": {
+                    "auth": "{{connections['<SUA_CONEXAO>']}}",
+                    "values": {
+                      "A": "{{step_1['output']['body']['id_consulta']}}",
+                      "B": "{{step_2['output']['nome']}}",
+                      "C": "{{step_2['output']['cpf']}}",
+                      "D": "{{step_1['output']['body']['parametros']['termo']}}",
+                      "E": "{{step_1['output']['body']['parametros']['filtro_beneficiario_programa_social']}}",
+                      "F": "{{step_1['output']['body']['data_hora_consulta']}}",
+                      "G": "{{step_1['output']['body']['status']}}",
+                      "H": "{{step_2['output']['mensagem']}}",
+                      "I": "https://drive.google.com/file/d/{{step_3['output']['id']}}/view"
+                    },
+                    "sheetId": 0,
+                    "as_string": false,
+                    "spreadsheetId": "<ID_DA_PLANILHA>",
+                    "first_row_headers": true,
+                    "includeTeamDrives": false
+                  },
+                  "pieceName": "@activepieces/piece-google-sheets",
+                  "actionName": "insert_row",
+                  "sampleData": {},
+                  "pieceVersion": "0.19.0",
+                  "propertySettings": {
+                    "values": {
+                      "type": "MANUAL",
+                      "schema": {
+                        "A": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "ID Consulta",
+                          "defaultValue": ""
+                        },
+                        "B": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "Nome",
+                          "defaultValue": ""
+                        },
+                        "C": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "CPF",
+                          "defaultValue": ""
+                        },
+                        "D": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "Termo Pesquisado",
+                          "defaultValue": ""
+                        },
+                        "E": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "Filtro Social",
+                          "defaultValue": ""
+                        },
+                        "F": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "Data/Hora",
+                          "defaultValue": ""
+                        },
+                        "G": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "Status",
+                          "defaultValue": ""
+                        },
+                        "H": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "Mensagem",
+                          "defaultValue": ""
+                        },
+                        "I": {
+                          "type": "SHORT_TEXT",
+                          "required": false,
+                          "displayName": "Link JSON",
+                          "defaultValue": ""
+                        }
+                      }
+                    },
+                    "sheetId": {
+                      "type": "MANUAL"
+                    },
+                    "as_string": {
+                      "type": "MANUAL"
+                    },
+                    "spreadsheetId": {
+                      "type": "MANUAL"
+                    },
+                    "first_row_headers": {
+                      "type": "MANUAL"
+                    },
+                    "includeTeamDrives": {
+                      "type": "MANUAL"
+                    }
+                  },
+                  "errorHandlingOptions": {
+                    "retryOnFailure": {
+                      "value": false
+                    },
+                    "continueOnFailure": {
+                      "value": false
+                    }
+                  }
+                },
+                "nextAction": {
+                  "name": "step_5",
+                  "skip": false,
+                  "type": "ROUTER",
+                  "valid": true,
+                  "children": [
+                    {
+                      "name": "step_6",
+                      "skip": false,
+                      "type": "PIECE",
+                      "valid": true,
+                      "settings": {
+                        "input": {
+                          "cc": [],
+                          "bcc": [],
+                          "auth": "{{connections['<SUA_CONEXAO>']}}",
+                          "body": "{{step_1['output']['body']['mensagem']}}  https://drive.google.com/file/d/{{step_3['output']['id']}}/view",
+                          "draft": false,
+                          "subject": "Consulta com erro {{step_1['output']['body']['id_consulta']}}",
+                          "receiver": [
+                            "seu-email@exemplo.com"
+                          ],
+                          "reply_to": [],
+                          "body_type": "plain_text",
+                          "attachments": []
+                        },
+                        "pieceName": "@activepieces/piece-gmail",
+                        "actionName": "send_email",
+                        "sampleData": {},
+                        "pieceVersion": "0.18.1",
+                        "propertySettings": {
+                          "cc": {
+                            "type": "MANUAL"
+                          },
+                          "bcc": {
+                            "type": "MANUAL"
+                          },
+                          "body": {
+                            "type": "MANUAL"
+                          },
+                          "from": {
+                            "type": "MANUAL"
+                          },
+                          "draft": {
+                            "type": "MANUAL"
+                          },
+                          "subject": {
+                            "type": "MANUAL"
+                          },
+                          "receiver": {
+                            "type": "MANUAL"
+                          },
+                          "reply_to": {
+                            "type": "MANUAL"
+                          },
+                          "body_type": {
+                            "type": "MANUAL"
+                          },
+                          "attachments": {
+                            "type": "MANUAL"
+                          },
+                          "in_reply_to": {
+                            "type": "MANUAL"
+                          },
+                          "sender_name": {
+                            "type": "MANUAL"
+                          }
+                        },
+                        "errorHandlingOptions": {
+                          "retryOnFailure": {
+                            "value": false
+                          },
+                          "continueOnFailure": {
+                            "value": false
+                          }
+                        }
+                      },
+                      "displayName": "Enviar e-mail",
+                      "lastUpdatedDate": "2026-10-28T23:18:26.938Z"
+                    },
+                    null
+                  ],
+                  "settings": {
+                    "branches": [
+                      {
+                        "branchName": "Erro",
+                        "branchType": "CONDITION",
+                        "conditions": [
+                          [
+                            {
+                              "operator": "TEXT_EXACTLY_MATCHES",
+                              "firstValue": "{{step_1['output']['body']['status']}}",
+                              "secondValue": "erro",
+                              "caseSensitive": false
+                            }
+                          ]
+                        ]
+                      },
+                      {
+                        "branchName": "Otherwise",
+                        "branchType": "FALLBACK"
+                      }
+                    ],
+                    "sampleData": {},
+                    "executionType": "EXECUTE_FIRST_MATCH"
+                  },
+                  "displayName": "Roteador",
+                  "lastUpdatedDate": "2026-10-28T23:18:26.937Z"
+                },
+                "displayName": "Adicionar linha",
+                "lastUpdatedDate": "2026-10-28T23:18:26.936Z"
+              },
+              "displayName": "Create File from Text",
+              "lastUpdatedDate": "2026-10-28T23:18:26.936Z"
+            },
+            "displayName": "Código",
+            "lastUpdatedDate": "2026-10-28T23:18:26.935Z"
+          },
+          "displayName": "Enviar solicitação HTTP",
+          "lastUpdatedDate": "2026-10-28T23:18:27.058Z"
+        },
+        "lastUpdatedDate": "2026-10-28T23:18:26.935Z",
+        "type": "PIECE_TRIGGER",
+        "settings": {
+          "sampleData": {},
+          "propertySettings": {
+            "authType": {
+              "type": "MANUAL"
+            },
+            "authFields": {
+              "type": "MANUAL",
+              "schema": {}
+            },
+            "liveMarkdown": {
+              "type": "MANUAL"
+            },
+            "syncMarkdown": {
+              "type": "MANUAL"
+            },
+            "testMarkdown": {
+              "type": "MANUAL"
+            }
+          },
+          "pieceName": "@activepieces/piece-webhook",
+          "pieceVersion": "0.1.42",
+          "triggerName": "catch_webhook",
+          "input": {
+            "authType": "none",
+            "authFields": {}
+          }
+        }
+      },
+      "valid": true,
+      "schemaVersion": "28",
+      "notes": []
+    }
+  ],
+  "status": "PUBLISHED"
+}

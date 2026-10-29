@@ -28,6 +28,8 @@ class BrowserManager:
         self._browser: Browser | None = None
         self._semaforo = asyncio.Semaphore(settings.max_concurrent_bots)
         self._lock = asyncio.Lock()
+        self._lock_inicio = asyncio.Lock()
+        self._ultimo_inicio = float("-inf")
         self._em_execucao = 0
 
     async def start(self) -> None:
@@ -49,6 +51,15 @@ class BrowserManager:
                 logger.warning("Navegador desconectado; reiniciando")
                 await self._lancar()
         return self._browser
+
+    async def _aguardar_intervalo(self) -> None:
+        # Espaça o início dos robôs: rajadas simultâneas do mesmo IP disparam o CAPTCHA do portal
+        async with self._lock_inicio:
+            relogio = asyncio.get_running_loop()
+            espera = self._ultimo_inicio + self._settings.bot_start_interval_s - relogio.time()
+            if espera > 0:
+                await asyncio.sleep(espera)
+            self._ultimo_inicio = relogio.time()
 
     async def stop(self) -> None:
         # No Windows, o Ctrl+C pode derrubar o driver antes do desligamento; não há o que fechar
@@ -79,6 +90,7 @@ class BrowserManager:
     @asynccontextmanager
     async def contexto(self) -> AsyncIterator[BrowserContext]:
         async with self._semaforo:
+            await self._aguardar_intervalo()
             browser = await self._garantir_browser()
             ctx = await self._browser.new_context(
                 locale="pt-BR",

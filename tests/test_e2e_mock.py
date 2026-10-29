@@ -40,7 +40,7 @@ def portal_url():
 
 async def _rodar(portal_url, consultas):
     settings = Settings(portal_base_url=portal_url, save_output_files=False, search_timeout_ms=3_000,
-                        max_concurrent_bots=3,
+                        max_concurrent_bots=3, bot_start_interval_s=0,
                         chromium_executable_path=os.getenv("CHROMIUM_EXECUTABLE_PATH"))
     browser = BrowserManager(settings)
     try:

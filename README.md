@@ -8,7 +8,7 @@ em Base64 e devolve tudo em JSON — exposto como **API REST com Swagger**.
 
 > Solução para o [desafio técnico público de RPA da mostQI](https://github.com/mostqi/desafios-fullstack-python/blob/main/desafio-01/README.md), feita como projeto de estudo.
 >
-> **Status:** Parte 1 (robô + API) ✅ concluída · Parte 2 (workflow com Google Drive/Sheets) 🚧 em andamento
+> **Status:** Parte 1 (robô + API) ✅ concluída · Parte 2 (workflow com Activepieces + Google Drive/Sheets) ✅ concluída
 
 ## Funcionalidades
 
@@ -23,6 +23,7 @@ em Base64 e devolve tudo em JSON — exposto como **API REST com Swagger**.
 - API REST documentada (`/docs`), autenticação por `X-API-Key`
 - JSON salvo localmente como `[ID]_[DATA_HORA].json`
 - Testes unitários, de API e **E2E com navegador real contra portal simulado**
+- **Hiperautomação (Parte 2):** workflow no Activepieces que chama o robô, salva o JSON no Google Drive e registra a consulta no Google Sheets
 
 ## Arquitetura
 
@@ -156,6 +157,12 @@ python scripts/demo_concorrencia.py "MARIA DA SILVA" "SILVA:social" "00000000000
 `MAX_CONCURRENT_BOTS` controla quantos robôs rodam ao mesmo tempo; as demais
 requisições aguardam na fila do semáforo.
 
+O portal exibe CAPTCHA quando vários navegadores do mesmo IP consultam juntos.
+Por isso os robôs começam espaçados (`BOT_START_INTERVAL_S`) e, se o CAPTCHA
+aparecer, a consulta é refeita num contexto novo após 10s e 30s
+(`ANTIBOT_MAX_RETRIES`), sempre dentro de `TOTAL_TIMEOUT_S`. Esgotadas as
+tentativas, a resposta traz `codigo_erro: "BLOQUEIO_ANTIBOT"` e o print do CAPTCHA.
+
 ## Testes
 
 ```bash
@@ -176,7 +183,10 @@ pytest
 | `PORTAL_API_KEY` | — | Chave da API oficial; ativa CPF/NIS via API |
 | `PORTAL_API_TIMEOUT_S` | 30 | Timeout por chamada à API oficial |
 | `PORTAL_API_MAX_PAGINAS` | 3 | Páginas (15 registros cada) por benefício |
-| `MAX_CONCURRENT_BOTS` | 3 | Robôs simultâneos |
+| `MAX_CONCURRENT_BOTS` | 2 | Robôs simultâneos |
+| `BOT_START_INTERVAL_S` | 3 | Intervalo mínimo entre o início de dois robôs |
+| `ANTIBOT_MAX_RETRIES` | 2 | Novas tentativas quando o portal exibe CAPTCHA |
+| `ANTIBOT_RETRY_WAIT_S` | 10 | Espera antes da 1ª nova tentativa (triplica a cada uma: 10s, 30s) |
 | `HEADLESS` | true | Modo sem interface |
 | `NAVIGATION_TIMEOUT_MS` | 30000 | Timeout de navegação |
 | `SEARCH_TIMEOUT_MS` | 20000 | Timeout da busca |
@@ -191,8 +201,28 @@ de extração são genéricos (pares rótulo/valor e tabelas), o que reduz quebr
 
 ## Parte 2 — Hiperautomação
 
-🚧 **Em desenvolvimento.** O documento abaixo descreve o plano de implementação com Activepieces:
+✅ **Concluída.** Workflow no **Activepieces** que orquestra o robô de ponta a ponta:
+
+```
+[Webhook] → [HTTP POST no robô] → [Code: preparar JSON] → [Google Drive: salvar arquivo]
+         → [Google Sheets: registrar linha] → [Roteador: status = erro? → e-mail via Gmail]
+```
+
+- O JSON de cada consulta é salvo no Google Drive como `[ID]_[DATA_HORA].json`
+- Uma planilha centraliza o histórico: ID da consulta, nome, CPF, termo, filtro, data/hora, status e o link do JSON no Drive
+- Consultas com erro disparam um **e-mail de alerta** (Gmail) com a mensagem e o link do JSON
+- Google Drive e Sheets conectados via **OAuth 2.0** nas peças nativas do Activepieces; nenhuma credencial Google fica no código
+
+**Como a API fica online hoje:** ela roda na máquina local e é exposta por um
+*quick tunnel* do **Cloudflare** (`cloudflared`), protegida por `X-API-Key`.
+Limitações conhecidas: a API só responde com o computador ligado, e a URL do
+túnel muda a cada reinício (é preciso atualizá-la no fluxo). O script
+`scripts/deploy_cloudrun.ps1` deixa pronto o caminho para publicar no Google Cloud Run.
+
+Passo a passo completo do fluxo, do túnel e do deploy em
 [docs/PARTE2_ACTIVEPIECES.md](docs/PARTE2_ACTIVEPIECES.md).
+O export do fluxo (sem URLs, chaves e IDs) está em
+[docs/activepieces_fluxo.json](docs/activepieces_fluxo.json) — importe no Activepieces e preencha os campos `<...>`.
 
 ## Autor
 

@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 
 import pytest
 
-from app.bot.exceptions import NenhumResultadoError, TempoEsgotadoError
+from app.bot.exceptions import BloqueioAntiBotError, NenhumResultadoError, TempoEsgotadoError
 from app.core.config import Settings
 from app.schemas import ConsultaRequest, DadosPessoa
 from app.services.consulta_service import ConsultaService
@@ -104,6 +104,55 @@ def test_nome_continua_no_navegador_mesmo_com_api():
 def test_documento_sem_api_usa_navegador():
     r = executar(criar_service(_scraper_ok), "529.982.247-25")
     assert r.fonte == "navegador"
+
+
+def _bloqueia_vezes(n):
+    tentativas = []
+
+    async def comportamento(termo, filtro):
+        tentativas.append(termo)
+        if len(tentativas) <= n:
+            raise BloqueioAntiBotError("captcha", evidencia_base64="Q0FQVENIQQ==")
+        return DadosPessoa(nome="MARIA", url_panorama="http://x"), "QkFTRTY0"
+
+    return comportamento, tentativas
+
+
+def test_captcha_tenta_de_novo_e_recupera():
+    comportamento, tentativas = _bloqueia_vezes(2)
+    r = executar(criar_service(comportamento, antibot_retry_wait_s=0), "Maria da Silva")
+    assert r.status == "sucesso"
+    assert len(tentativas) == 3
+
+
+def test_captcha_persistente_desiste_apos_limite():
+    comportamento, tentativas = _bloqueia_vezes(99)
+    r = executar(criar_service(comportamento, antibot_retry_wait_s=0, antibot_max_retries=2), "Maria da Silva")
+    assert r.codigo_erro == "BLOQUEIO_ANTIBOT"
+    assert r.evidencia_base64 == "Q0FQVENIQQ=="
+    assert len(tentativas) == 3
+
+
+def test_captcha_nao_espera_alem_do_timeout_total():
+    comportamento, tentativas = _bloqueia_vezes(99)
+    r = executar(criar_service(comportamento, antibot_retry_wait_s=60, total_timeout_s=30), "Maria da Silva")
+    assert r.codigo_erro == "BLOQUEIO_ANTIBOT"  # desiste na hora em vez de virar TEMPO_ESGOTADO
+    assert len(tentativas) == 1
+
+
+def test_captcha_nao_tenta_de_novo_se_a_tentativa_nao_cabe():
+    tentativas = []
+
+    async def lento_e_bloqueado(termo, filtro):
+        tentativas.append(termo)
+        await asyncio.sleep(0.3)  # cada tentativa leva 0.3s até o CAPTCHA
+        raise BloqueioAntiBotError("captcha")
+
+    # Restam ~0.2s após a 1ª tentativa: cabe a espera (0.05s), mas não outra tentativa de 0.3s
+    service = criar_service(lento_e_bloqueado, antibot_retry_wait_s=0.05, total_timeout_s=0.5)
+    r = executar(service, "Maria da Silva")
+    assert r.codigo_erro == "BLOQUEIO_ANTIBOT"
+    assert len(tentativas) == 1
 
 
 def test_erro_inesperado_nao_vaza_detalhes():

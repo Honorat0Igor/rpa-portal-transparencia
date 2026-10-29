@@ -42,6 +42,17 @@ de workflow.
   diferentes para nome e documento; o serviço traduz exceções de domínio em
   mensagens conforme o tipo de termo.
 - **CPF x NIS:** ambos têm 11 dígitos; a classificação usa os dígitos verificadores.
+- **CAPTCHA em execuções simultâneas:** no teste real, 3 consultas pelo navegador
+  disparadas juntas fizeram o portal exibir verificação humana em 2 delas; as mesmas
+  consultas, uma de cada vez, funcionaram. Mitigação: início dos robôs espaçado,
+  concorrência padrão 2 e nova tentativa automática com espera crescente (10s, 30s)
+  num contexto limpo, sem estourar o timeout total. CPF/NIS pela API oficial não
+  sofrem esse bloqueio — motivo central da fonte híbrida.
+- **Headless x CAPTCHA:** em testes posteriores, o modo headless (inclusive o
+  `--headless=new` do Chrome) passou a receber CAPTCHA mesmo em consultas isoladas,
+  enquanto a mesma consulta com navegador visível passou em ~15s. Na execução local
+  uso `HEADLESS=false`. Optei por não falsificar sinais do navegador para driblar a
+  proteção do portal: para volume, o caminho legítimo é a API oficial.
 - **Concorrência x memória:** o limite de robôs simultâneos é configurável para
   caber no free tier do provedor.
 - **Testabilidade sem depender do portal:** criei um portal simulado local para
